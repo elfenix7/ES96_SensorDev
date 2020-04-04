@@ -98,7 +98,6 @@ void loop() {
   Serial.print(sensor.getCalibratedV());
   Serial.print(",");
   Serial.print(sensor.getCalibratedW());
-  Serial.print(",");
   //Blank line for spacing
   Serial.println();
   // end of continuous measurements function

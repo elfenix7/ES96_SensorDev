@@ -2,7 +2,7 @@
 #define dial A0 // Put frequency sweeper input on pin A0
 #define on 14 // Put on switch input on pin 14
 #define SoundSensorPin A1 // Put sound sensor input on pin A1
-#define button 15 // Put button input on pin 15
+#define button A2 // Put button input on pin 15
 #define VREF  5.0 // Arduion voltage
 
 int buzzer = 16; // Put buzzer output on pin 16

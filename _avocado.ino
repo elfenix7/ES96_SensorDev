@@ -1,6 +1,6 @@
 #define led 10 // Put LED indicator output on pin 10
 #define dial A0 // Put frequency sweeper input on pin A0
-#define on 14 // Put on switch input on pin 14
+#define switcher 14 // Put on switch input on pin 14
 #define SoundSensorPin A1 // Put sound sensor input on pin A1
 #define button A2 // Put button input on pin 15
 #define VREF  5.0 // Arduion voltage
@@ -8,33 +8,57 @@
 int buzzer = 16; // Put buzzer output on pin 16
 int ledState = LOW; // Start the LED off
 
-float frequency = 100; // Starting frequency
+float frequency = 4700; // Starting frequency
 
-unsigned long prevLEDtime = 0;
-unsigned long currentMillis = 0;
+unsigned long prevLEDtime = 0; // For LED timing purposes
+unsigned long currentMillis = 0; // For general timing purposes
 
-struct soundpackage
+bool sense = 0; // For mode switching purposes
+int sense_switch = 0; // For mode labeling
+int sense_switched = 0; // For detecting if a mode was just switched
+
+struct soundpackage // Used in the sound printscreen function
 {
-  unsigned long prevDBtime;
-  float soundlevel;
+  unsigned long prevDBtime; // For sound timing purposes
+  float soundlevel; // Records the sound level
 };
 soundpackage sound;
 
+struct serialrecord // What the computer reads via serial
+{
+  float A;
+  float B;
+  float C;
+  float D;
+  float E;
+  float F;
+  float G;
+  float H;
+  float I;
+  float J;
+  float K;
+  float L;
+  float R;
+  float S;
+  float T;
+  float U;
+  float V;
+  float W;
+  float dB;
+};
+serialrecord serial;
+
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(4, 5, 6, 7, 8, 9);
-
 #include "SparkFun_AS7265X.h" //Click here to get the library: http://librarymanager/All#SparkFun_AS7265X
 AS7265X sensor;
-
 #include <Wire.h> 
-
-bool sense = 0;
 
 void setup()
 {
   pinMode(led, OUTPUT);
   pinMode(buzzer, OUTPUT);
-  pinMode(on, INPUT_PULLUP);
+  pinMode(switcher, INPUT_PULLUP);
   pinMode(button, INPUT_PULLUP);
   lcd.begin(16, 2);
   Serial.begin(115200);
@@ -85,72 +109,27 @@ void setup()
 
 void loop() 
 {
-  if (digitalRead(on))  // Do sound sensing
+  if (digitalRead(switcher) != sense) // This detects when you want to switch modes
   {
-    soundsense();
-    sense = 0;
+    sense_switch += 1;
+    if (sense_switch > 2)
+      sense_switch = 0;
+    sense = digitalRead(switcher);
   }
-  else
+  switch (sense_switch)
   {
-    opticalsense();
-  }
-}
-
-void opticalsense() // do optical sensing
-{
-  if (sense == 0)
-  {
-    lcd.clear();
-    lcd.print("optical sensing");
-    sense = 1;
-  }
-  if (digitalRead(button) == LOW) // Start the test when ready
-  {
-    // Continuous Measurements
-    sensor.takeMeasurementsWithBulb(); //This is a hard wait while all 18 channels are measured
-    // Read and space with commas for CSV format, gaps are to indicate the three sensor packages
-    Serial.print(sensor.getCalibratedA());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedB());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedC());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedD());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedE());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedF());
-    Serial.print(",");
-  
-    Serial.print(sensor.getCalibratedG());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedH());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedI());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedJ());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedK());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedL());
-    Serial.print(",");
-  
-    Serial.print(sensor.getCalibratedR());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedS());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedT());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedU());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedV());
-    Serial.print(",");
-    Serial.print(sensor.getCalibratedW());
-    //Blank line for spacing
-    Serial.println();
-    // end of continuous measurements function
-  
-    // Prompted Measurements 
+    case 0:
+      soundsense(); // Sound sensing mode
+      sense_switched = sense_switch;
+      break;
+    case 1:
+      opticalsense(); // Optical sensing mode
+      sense_switched = sense_switch;
+      break;
+    case 2:
+      serialsend(); // Serial sending mode
+      sense_switched = sense_switch;
+      break;
   }
 }
 
@@ -168,30 +147,30 @@ void soundsense() // do sound sensing
     float attn_avg = 0;
     int attn_ctr = 0;
     currentMillis = millis(); // Get the time
-    while (millis() - currentMillis < 5000) // Get background sound level for 5 seconds
+    while (millis() - currentMillis < 5000) // Get attenuated sound level for 5 seconds
     {
 
       sound = printscreen(sound.prevDBtime, millis()); // Print values on LCD screen
-      base_avg += sound.soundlevel;
-      base_ctr += 1;
+      attn_avg += sound.soundlevel;
+      attn_ctr += 1;
       prevLEDtime = LED(prevLEDtime, millis(), 500); // Flash LED twice a second
     }
-    base_avg = base_avg/base_ctr; // Calculate average base sound levels
+    attn_avg = attn_avg/attn_ctr; // Calculate average attenuated sound levels
     digitalWrite(led, HIGH);
-    while (digitalRead(button) == HIGH) // Press the button to signal ready for attenuated sensing
+    while (digitalRead(button) == HIGH) // Press the button to signal ready for background sensing
     {
       // do nothing
     }
     delay(500);
     currentMillis = millis(); // Get the time
-    while (millis() - currentMillis < 5000) // Get the attenuated sound level for 5 seconds
+    while (millis() - currentMillis < 5000) // Get the background sound level for 5 seconds
     {
       sound = printscreen(sound.prevDBtime, millis()); // Print values on LCD screen
-      attn_avg += sound.soundlevel;
-      attn_ctr += 1;
+      base_avg += sound.soundlevel;
+      base_ctr += 1;
       prevLEDtime = LED(prevLEDtime, millis(), 250); // Flash LED four times a second      
     }
-    attn_avg = attn_avg/attn_ctr; // Calculate average attenuated sound levels
+    base_avg = base_avg/base_ctr; // Calculate average background sound levels
     lcd.clear(); // Print attenuation and end test
     lcd.print((int) frequency);
     lcd.setCursor(0,1);
@@ -202,8 +181,7 @@ void soundsense() // do sound sensing
     lcd.print(" dB atten.");
     noTone(buzzer);
     digitalWrite(led, HIGH);
-    Serial.print(base_avg - attn_avg);
-    Serial.println(" dB atten");
+    serial.dB = base_avg - attn_avg;
     while (digitalRead(button) == HIGH) // Press the button to clear attenuated value
     {
       // do nothing
@@ -211,6 +189,94 @@ void soundsense() // do sound sensing
     delay(500);
     digitalWrite(led, LOW);
   }  
+}
+
+void opticalsense() // do optical sensing
+{
+  if (sense_switched != sense_switch)
+  {
+    lcd.clear();
+    lcd.print("optical sensing");
+  }
+  if (digitalRead(button) == LOW) // Start the test when ready
+  {
+    // Continuous Measurements
+    sensor.takeMeasurementsWithBulb(); //This is a hard wait while all 18 channels are measured
+    // Read and space with commas for CSV format, gaps are to indicate the three sensor packages
+    serial.A = sensor.getCalibratedA();
+    serial.B = sensor.getCalibratedB();
+    serial.C = sensor.getCalibratedC();
+    serial.D = sensor.getCalibratedD();
+    serial.E = sensor.getCalibratedE();
+    serial.F = sensor.getCalibratedF();
+  
+    serial.G = sensor.getCalibratedG();
+    serial.H = sensor.getCalibratedH();
+    serial.I = sensor.getCalibratedI();
+    serial.J = sensor.getCalibratedJ();
+    serial.K = sensor.getCalibratedK();
+    serial.L = sensor.getCalibratedL();
+  
+    serial.R = sensor.getCalibratedR();
+    serial.S = sensor.getCalibratedS();
+    serial.T = sensor.getCalibratedT();
+    serial.U = sensor.getCalibratedU();
+    serial.V = sensor.getCalibratedV();
+    serial.W = sensor.getCalibratedW();
+    // end of continuous measurements function
+  }
+}
+
+void serialsend() // Sends the data via serial
+{
+  if (sense_switched != sense_switch)
+  {
+    lcd.clear();
+    lcd.print("sending serial");
+  }
+  if (digitalRead(button) == LOW) // Send the serial data when ready
+  {
+    Serial.print(serial.A);
+    Serial.print(",");
+    Serial.print(serial.B);
+    Serial.print(",");
+    Serial.print(serial.C);
+    Serial.print(",");
+    Serial.print(serial.D);
+    Serial.print(",");
+    Serial.print(serial.E);
+    Serial.print(",");
+    Serial.print(serial.F);
+    Serial.print(",");
+    Serial.print(serial.G);
+    Serial.print(",");
+    Serial.print(serial.H);
+    Serial.print(",");
+    Serial.print(serial.I);
+    Serial.print(",");
+    Serial.print(serial.J);
+    Serial.print(",");
+    Serial.print(serial.K);
+    Serial.print(",");
+    Serial.print(serial.L);
+    Serial.print(",");
+    Serial.print(serial.R);
+    Serial.print(",");
+    Serial.print(serial.S);
+    Serial.print(",");
+    Serial.print(serial.T);
+    Serial.print(",");
+    Serial.print(serial.U);
+    Serial.print(",");
+    Serial.print(serial.V);
+    Serial.print(",");
+    Serial.print(serial.W);
+    Serial.print(",");
+    Serial.print(serial.dB);
+    Serial.print(" dB");
+    Serial.println();
+    delay(500);
+  }
 }
 
 float freq(float f) // Return a new fequency based on scrolling the frequency sweeper
@@ -256,11 +322,8 @@ unsigned long LED(unsigned long prevLEDtime, unsigned long currentMillis, int le
     if (ledState == LOW)
       ledState = HIGH;
     else
-      ledState = LOW;
-    if (digitalRead(on))
-      digitalWrite(led, ledState);
-    else
-      digitalWrite(led, LOW);
+      ledState = LOW;  
+    digitalWrite(led, ledState);
   }
   return prevLEDtime;
 }

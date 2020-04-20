@@ -8,10 +8,8 @@ import time
 import serial
 import RPi.GPIO as GPIO
 
-INIT_SUCCESS = "Good to go!"
-
 ser = serial.Serial (
-        port='/dev/ttyUSB0',
+        port='/dev/ttyACM0',
         baudrate=115200,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
@@ -40,11 +38,7 @@ if __name__ == "__main__":
     ser.close() #serial port may already be open; reopening resets the Arduino
     ser.open()
 
-    # verify successful Arduino+sensor startup
-    status = ser.readline()
-    status = status.strip().decode("utf-8")
-    if (status != INIT_SUCCESS):
-        die("Error: sensor initialization failed!", 1)
+    #TODO: verify successful sensor + arduino startup
 
     # main loop
     while True:

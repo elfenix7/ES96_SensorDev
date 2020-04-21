@@ -15,7 +15,7 @@ from json_payload import *
 NUM_SCAN_FIELDS = 20    # number of expected fields per scan
 
 ser = serial.Serial (
-        port='/dev/ttyUSB0',
+        port='/dev/ttyACM0',
         baudrate=115200,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
@@ -74,6 +74,18 @@ if __name__ == "__main__":
             outfile = open(filename, 'w')
             outfile.write(json.dumps(req_payload))
             outfile.close()
+            
+            # upload scan to database
+            try:
+                response = requests.post(url, data=json.dumps(req_payload), headers=headers)
+                print(response.text.encode('utf8'))
+                response.raise_for_status
+            except HTTPError as http_err:
+                print(f'HTTP error occured: {http_err}')
+            except Exception as err:
+                print(f'Other error occured: {err}')
+            else:
+                print('Success!')
             
         except:
             cleanup()

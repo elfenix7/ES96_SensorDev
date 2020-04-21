@@ -6,10 +6,16 @@
 import sys
 import time
 import serial
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
+import requests
+from requests.exceptions import HTTPError
+import json
+from json_payload import *
+
+NUM_SCAN_FIELDS = 20    # number of expected fields per scan
 
 ser = serial.Serial (
-        port='/dev/ttyACM0',
+        port='/dev/ttyUSB0',
         baudrate=115200,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
@@ -19,8 +25,9 @@ ser = serial.Serial (
 
 # cleanup GPIO and close serial port; call this before exiting
 def cleanup():
-    global GPIO, ser
-    GPIO.cleanup()
+    #global GPIO
+    global ser
+    #GPIO.cleanup()
     ser.close()
 
 
@@ -34,23 +41,38 @@ def die(errormsg="", exitcode=0):
 
 if __name__ == "__main__":
     # initialization
-    GPIO.setmode(GPIO.BOARD) #TODO: use BOARD or BCM mode?
-    ser.close() #serial port may already be open; reopening resets the Arduino
+    #GPIO.setmode(GPIO.BOARD) #TODO: use BOARD or BCM mode?
+    ser.close()
     ser.open()
-
-    #TODO: verify successful sensor + arduino startup
 
     # main loop
     while True:
         try:
-            rawdata = ser.readline()
-            data = rawdata.decode("utf-8")
+            scandata = ser.readline().decode("utf-8")
+            vals = scandata.split(",")
+            if len(vals) < NUM_SCAN_FIELDS:
+                print("Not enough data received! Expected %d fields, received %d" % NUM_SCAN_FIELDS, len(vals), file=sys.stderr)
+                continue
             
+            # break out received data into individual measurements
+            scan_id = vals[0];
+            light_spectrum = list(map(float, vals[1:19]))
+            sound_atten = float(vals[19].split(" ", 1)[0])
+            # TODO: get impedance values
+            # impedance_sweep = list(map(float, vals[20:]))
             timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-            filename = timestamp + ".txt"
             
+            # debug: print received values
+            print("scan_id: %s" % scan_id)
+            print("light_spectrum: %s" % light_spectrum)
+            print("sound_atten: %f" % sound_atten)
+
+            req_payload = populate_payload(scan_id, timestamp, light_spectrum, sound_atten)
+            
+            # save scan results
+            filename = scan_id + "_" + timestamp + ".json"
             outfile = open(filename, 'w')
-            outfile.write(data)
+            outfile.write(json.dumps(req_payload))
             outfile.close()
             
         except:

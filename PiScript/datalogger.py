@@ -69,10 +69,11 @@ if __name__ == "__main__":
             
             # debug: print received values
             print("scan_id: %s" % scan_id)
+            print("stage: %d" % stage)
             print("light_spectrum: %s" % light_spectrum)
             print("sound_atten: %f" % sound_atten)
 
-            req_payload = populate_payload(scan_id=scan_id, timestamp=timestamp, light_spectrum=light_spectrum, sound_atten=sound_atten, stage=stage)
+            req_payload = populate_payload(scan_id=scan_id, time=timestamp, light_spectrum=light_spectrum, sound_atten=sound_atten, stage=stage)
             
             # save scan results
             filename = scan_id + "_" + timestamp + ".json"

@@ -8,10 +8,58 @@
 int buzzer = 16; // Put buzzer output on pin 16
 int ledState = LOW; // Start the LED off
 
-float frequency = 4700; // Starting frequency
+const int frequency = 4700; // Starting frequency
+int ident = 0; // Starting identifier location
+int ident_old = 0; // For detecting if identifier location was just changed
+int stage_old = 1; // For detecting if stage number was just changed
+
+String names_list[41] = {
+  "mh1",
+  "mh2",
+  "mh3",
+  "mh4",
+  "mh5",
+  "mh6",
+  "mh7",
+  "mh8",
+  "mh9",
+  "mh10",
+  "mc1",
+  "mc2",
+  "mc3",
+  "mc4",
+  "mc5",
+  "mc6",
+  "mc7",
+  "mc8",
+  "mc9",
+  "mc10",
+  "mr1",
+  "mr2",
+  "mr3",
+  "mr4",
+  "mr5",
+  "mr6",
+  "mr7",
+  "mr8",
+  "mr9",
+  "mr10",
+  "mr11",
+  "mr12",
+  "mr13",
+  "mr14",
+  "mr15",
+  "mr16",
+  "mr17",
+  "mr18",
+  "mr19",
+  "mr20"
+};
 
 unsigned long prevLEDtime = 0; // For LED timing purposes
 unsigned long currentMillis = 0; // For general timing purposes
+unsigned long prevNametime = 0; // For identifier update timing purposes
+unsigned long prevStagetime = 0; // For stage update timing purposes
 
 bool sense = 0; // For mode switching purposes
 int sense_switch = 0; // For mode labeling
@@ -26,6 +74,8 @@ soundpackage sound;
 
 struct serialrecord // What the computer reads via serial
 {
+  String identifier = "mh1";
+  int stage = 1;
   float A;
   float B;
   float C;
@@ -136,7 +186,6 @@ void loop()
 void soundsense() // do sound sensing
 {
   digitalWrite(led, LOW); // Turn the led off until starting test
-  frequency = freq(frequency); // Read the frequency from the frequency sweeper
   sound = printscreen(sound.prevDBtime, millis()); // Keep reading values until ready
   if (digitalRead(button) == LOW) // Start the test when ready
   {
@@ -172,7 +221,7 @@ void soundsense() // do sound sensing
     }
     base_avg = base_avg/base_ctr; // Calculate average background sound levels
     lcd.clear(); // Print attenuation and end test
-    lcd.print((int) frequency);
+    lcd.print(frequency);
     lcd.setCursor(0,1);
     lcd.print(base_avg - attn_avg);
     lcd.setCursor(5,0);
@@ -233,9 +282,58 @@ void serialsend() // Sends the data via serial
   {
     lcd.clear();
     lcd.print("sending serial");
+    lcd.setCursor(0,1);
+    lcd.print(serial.identifier);
+    lcd.print(" ");
+    lcd.setCursor(5,1);
+    lcd.print("stage: ");
+    lcd.print(serial.stage);
   }
-  if (digitalRead(button) == LOW) // Send the serial data when ready
+  while (digitalRead(button) == HIGH)
   {
+    digitalWrite(led,HIGH);
+    if (digitalRead(switcher) != sense)
+    break;
+    if (millis() - prevNametime >= 400)
+    {
+      ident = naming(ident);
+      prevNametime = millis();  
+    }
+    serial.identifier = names_list[ident];
+    if (ident != ident_old)
+    {
+      lcd.setCursor(0,1);
+      lcd.print(serial.identifier);
+      lcd.print(" ");
+      ident_old = ident;
+    }
+  }
+  delay(200);
+  while (digitalRead(button) == HIGH)
+  {
+    digitalWrite(led,LOW);
+    if (digitalRead(switcher) != sense)
+    break;
+    if (millis() - prevStagetime >= 400)
+    {
+      serial.stage = staging(serial.stage);
+      prevStagetime = millis();  
+    }
+    if (serial.stage != stage_old)
+    {
+      lcd.setCursor(5,1);
+      lcd.print("stage: ");
+      lcd.print(serial.stage);
+      stage_old = serial.stage;
+    }  
+  }
+  // Send the serial data when ready
+  if (digitalRead(button) == LOW)
+  {
+    Serial.print(serial.identifier);
+    Serial.print(",");
+    Serial.print(serial.stage);
+    Serial.print(",");
     Serial.print(serial.A);
     Serial.print(",");
     Serial.print(serial.B);
@@ -279,18 +377,32 @@ void serialsend() // Sends the data via serial
   }
 }
 
-float freq(float f) // Return a new fequency based on scrolling the frequency sweeper
+int naming(int f) // Return a new identifier based on scrolling the name sweeper
 {
   int dialvalue = analogRead(dial);
   if (dialvalue < 400)
-    f -= exp((float) map(dialvalue,399,0,-4,5))/(10^5);
+    f -= map(dialvalue,399,0,1,5);
   if (dialvalue > 624)
-    f += exp((float) map(dialvalue,625,1024,-4,5))/(10^5);
-  if (f > 13000)
-    f = 13000;
-  if (f < 40)
-    f = 40;
+    f += map(dialvalue,625,1024,1,5);
+  if (f > 39)
+    f = 0;
+  if (f < 0)
+    f = 39;
   return f;
+}
+
+int staging(int f) // Return a new stage based on scrolling the stage sweeper
+{
+  int dialvalue = analogRead(dial);
+  if (dialvalue < 400)
+    f -= map(dialvalue,399,0,1,5);
+  if (dialvalue > 624)
+    f += map(dialvalue,625,1024,1,5);
+  if (f > 5)
+    f = 5;
+  if (f < 1)
+    f = 1;
+  return f;  
 }
 
 soundpackage printscreen(unsigned long prevDBtime, unsigned long currentMillis) // Print sound level and frequency if .5 seconds have passed
@@ -307,7 +419,7 @@ soundpackage printscreen(unsigned long prevDBtime, unsigned long currentMillis) 
     dbValue = voltageValue * 50.0;  //convert voltage to decibel value
     sound.soundlevel = dbValue;
     lcd.clear();
-    lcd.print((int) frequency);
+    lcd.print(frequency);
     lcd.setCursor(0,1);
     lcd.print(dbValue); 
   }

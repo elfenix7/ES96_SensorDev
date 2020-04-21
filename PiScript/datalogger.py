@@ -3,6 +3,7 @@
 # This script repeatedly reads in a line from the serial port,
 # then saves it to a text file with a filename given by the following format:
 # yyyy-mm-dd_hh-mm-ss.txt
+import os
 import sys
 import time
 import serial

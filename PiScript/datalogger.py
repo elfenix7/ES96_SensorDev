@@ -12,7 +12,9 @@ from requests.exceptions import HTTPError
 import json
 from json_payload import *
 
-NUM_SCAN_FIELDS = 20    # number of expected fields per scan
+DATA_DIR = "/home/pi/avocado_data"
+
+NUM_SCAN_FIELDS = 21    # number of expected fields per scan
 
 ser = serial.Serial (
         port='/dev/ttyACM0',
@@ -42,6 +44,7 @@ def die(errormsg="", exitcode=0):
 if __name__ == "__main__":
     # initialization
     #GPIO.setmode(GPIO.BOARD) #TODO: use BOARD or BCM mode?
+    os.chdir(DATA_DIR)
     ser.close()
     ser.open()
 
@@ -55,9 +58,10 @@ if __name__ == "__main__":
                 continue
             
             # break out received data into individual measurements
-            scan_id = vals[0];
-            light_spectrum = list(map(float, vals[1:19]))
-            sound_atten = float(vals[19].split(" ", 1)[0])
+            scan_id = vals[0]
+            stage = int(vals[1])
+            light_spectrum = list(map(float, vals[2:20]))
+            sound_atten = float(vals[20].split(" ", 1)[0])
             # TODO: get impedance values
             # impedance_sweep = list(map(float, vals[20:]))
             timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
@@ -67,7 +71,7 @@ if __name__ == "__main__":
             print("light_spectrum: %s" % light_spectrum)
             print("sound_atten: %f" % sound_atten)
 
-            req_payload = populate_payload(scan_id, timestamp, light_spectrum, sound_atten)
+            req_payload = populate_payload(scan_id=scan_id, timestamp=timestamp, light_spectrum=light_spectrum, sound_atten=sound_atten, stage=stage)
             
             # save scan results
             filename = scan_id + "_" + timestamp + ".json"

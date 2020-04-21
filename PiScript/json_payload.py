@@ -16,7 +16,8 @@ payload_template = {
         {
             "light_spectrum": [],
             "sound_attenuation": None,
-            "impedance_sweep": None
+            "impedance_sweep": None,
+            "stage": None
         }
     ]
 }
@@ -25,7 +26,7 @@ headers = {
     'Content-Type': 'application/json'
 }
 
-def populate_payload(scan_id="", time="", light_spectrum=[], sound_atten=None, impedance_sweep=None):
+def populate_payload(scan_id="", time="", light_spectrum=[], sound_atten=None, impedance_sweep=None, stage=None):
     global payload_template
     payload = payload_template
     payload["scan_id"] = scan_id
@@ -33,5 +34,6 @@ def populate_payload(scan_id="", time="", light_spectrum=[], sound_atten=None, i
     payload["data"][0]["light_spectrum"] = light_spectrum
     payload["data"][0]["sound_attenuation"] = sound_atten
     payload["data"][0]["impedance_sweep"] = impedance_sweep
+    payload["data"][0]["stage"] = stage
     return payload
 

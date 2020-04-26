@@ -13,7 +13,7 @@ int ident = 0; // Starting identifier location
 int ident_old = 0; // For detecting if identifier location was just changed
 int stage_old = 1; // For detecting if stage number was just changed
 
-String names_list[41] = {
+String names_list[81] = {
   "mh1",
   "mh2",
   "mh3",
@@ -53,7 +53,47 @@ String names_list[41] = {
   "mr17",
   "mr18",
   "mr19",
-  "mr20"
+  "mr20",
+  "jh1",
+  "jh2",
+  "jh3",
+  "jh4",
+  "jh5",
+  "jh6",
+  "jh7",
+  "jh8",
+  "jh9",
+  "jh10",
+  "jc1",
+  "jc2",
+  "jc3",
+  "jc4",
+  "jc5",
+  "jc6",
+  "jc7",
+  "jc8",
+  "jc9",
+  "jc10",
+  "jr1",
+  "jr2",
+  "jr3",
+  "jr4",
+  "jr5",
+  "jr6",
+  "jr7",
+  "jr8",
+  "jr9",
+  "jr10",
+  "jr11",
+  "jr12",
+  "jr13",
+  "jr14",
+  "jr15",
+  "jr16",
+  "jr17",
+  "jr18",
+  "jr19",
+  "jr20"
 };
 
 unsigned long prevLEDtime = 0; // For LED timing purposes
@@ -115,10 +155,7 @@ void setup()
   sound.prevDBtime = 0;
 
   if(sensor.begin() == false)
-  {
     Serial.println("Sensor does not appear to be connected. Please check wiring. Freezing...");
-    while(1);
-  }
   else
     Serial.println("Good to go!");
 
@@ -196,7 +233,7 @@ void soundsense() // do sound sensing
     float attn_avg = 0;
     int attn_ctr = 0;
     currentMillis = millis(); // Get the time
-    while (millis() - currentMillis < 5000) // Get attenuated sound level for 5 seconds
+    while (millis() - currentMillis < 2000) // Get attenuated sound level for 2 seconds, i.e. 10 times
     {
 
       sound = printscreen(sound.prevDBtime, millis()); // Print values on LCD screen
@@ -212,7 +249,7 @@ void soundsense() // do sound sensing
     }
     delay(500);
     currentMillis = millis(); // Get the time
-    while (millis() - currentMillis < 5000) // Get the background sound level for 5 seconds
+    while (millis() - currentMillis < 2000) // Get the background sound level for 2 second, i.e. 10 times
     {
       sound = printscreen(sound.prevDBtime, millis()); // Print values on LCD screen
       base_avg += sound.soundlevel;
@@ -373,6 +410,7 @@ void serialsend() // Sends the data via serial
     Serial.print(serial.dB);
     Serial.print(" dB");
     Serial.println();
+    ident += 1;
     delay(500);
   }
 }
@@ -384,10 +422,10 @@ int naming(int f) // Return a new identifier based on scrolling the name sweeper
     f -= map(dialvalue,399,0,1,5);
   if (dialvalue > 624)
     f += map(dialvalue,625,1024,1,5);
-  if (f > 39)
+  if (f > 79)
     f = 0;
   if (f < 0)
-    f = 39;
+    f = 79;
   return f;
 }
 
@@ -405,13 +443,13 @@ int staging(int f) // Return a new stage based on scrolling the stage sweeper
   return f;  
 }
 
-soundpackage printscreen(unsigned long prevDBtime, unsigned long currentMillis) // Print sound level and frequency if .5 seconds have passed
+soundpackage printscreen(unsigned long prevDBtime, unsigned long currentMillis) // Print sound level and frequency if .2 seconds have passed
 {
   lcd.setCursor(5,0);
   lcd.print(" Hz");
   lcd.setCursor(5,1);
   lcd.print(" dB");
-  if (currentMillis - prevDBtime >= 500)
+  if (currentMillis - prevDBtime >= 200)
   {
     sound.prevDBtime = currentMillis;
     float voltageValue,dbValue;
